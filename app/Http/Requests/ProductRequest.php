@@ -9,12 +9,18 @@ class ProductRequest extends FormRequest
     }
     public function rules(): array
     {
+        $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH');
         return [
-            'name'        => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price'       => 'required|numeric',
-            'stock'       => 'required|integer|min:0',
-            'image'       => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'price' => 'required|numeric',
+            'stock' => 'required|integer|min:0',
+            'image' => [
+                $isUpdate ? 'nullable' : 'required',
+                'image',
+                'mimes:jpeg,png,jpg,gif,svg',
+                'max:2048',
+            ],
         ];
     }
 }
