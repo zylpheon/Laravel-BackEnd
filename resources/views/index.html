@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    * {
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .mono {
+      font-family: 'DM Mono', monospace;
+    }
+
+    .fade-enter {
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #000;
+    }
+
+    input[type=file]::file-selector-button {
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    .table-row:hover td {
+      background: #f9f9f9;
+    }
+
+    .spin {
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .slide-in {
+      animation: slideIn 0.25s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-white text-black min-h-screen">
+
+  <div id="app">
+
+    <!-- ─── AUTH PAGES ─── -->
+    <div v-if="!isLoggedIn" class="min-h-screen flex flex-col items-center justify-center px-4 bg-white">
+
+      <!-- Header brand -->
+      <div class="mb-10 text-center">
+        <div class="inline-block border border-black px-4 py-1 mono text-xs tracking-widest mb-4">ADMIN PANEL</div>
+        <h1 class="text-4xl font-semibold tracking-tight">{{ authPage === 'login' ? 'Masuk' : authPage === 'register' ?
+          'Daftar' : 'Reset Password' }}</h1>
+      </div>
+
+      <!-- ── LOGIN ── -->
+      <div v-if="authPage === 'login'" class="w-full max-w-sm fade-enter">
+        <div class="border border-black p-8">
+          <div v-if="authError" class="bg-black text-white text-sm px-4 py-2 mb-5 mono">{{ authError }}</div>
+          <div class="mb-5">
+            <label class="block text-xs mono tracking-widest mb-1.5">EMAIL</label>
+            <input v-model="loginForm.email" type="email" placeholder="admin@example.com"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <div class="mb-6">
+            <label class="block text-xs mono tracking-widest mb-1.5">PASSWORD</label>
+            <input v-model="loginForm.password" type="password" placeholder="••••••••"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <button @click="doLogin" :disabled="authLoading"
+            class="w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-gray-900 transition disabled:opacity-50 flex items-center justify-center gap-2">
+            <span v-if="authLoading"
+              class="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin"></span>
+            {{ authLoading ? 'Memproses...' : 'Masuk' }}
+          </button>
+          <div class="mt-5 flex justify-between text-xs text-gray-500">
+            <button @click="authPage='register'" class="hover:text-black underline">Buat akun baru</button>
+            <button @click="authPage='forgot'" class="hover:text-black underline">Lupa password?</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REGISTER ── -->
+      <div v-if="authPage === 'register'" class="w-full max-w-sm fade-enter">
+        <div class="border border-black p-8">
+          <div v-if="authError" class="bg-black text-white text-sm px-4 py-2 mb-5 mono">{{ authError }}</div>
+          <div v-if="authSuccess" class="border border-black text-sm px-4 py-2 mb-5 mono bg-gray-50">{{ authSuccess }}
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs mono tracking-widest mb-1.5">NAMA LENGKAP</label>
+            <input v-model="registerForm.name" type="text" placeholder="John Doe"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs mono tracking-widest mb-1.5">EMAIL</label>
+            <input v-model="registerForm.email" type="email" placeholder="email@example.com"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs mono tracking-widest mb-1.5">PASSWORD</label>
+            <input v-model="registerForm.password" type="password" placeholder="Min. 8 karakter"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <div class="mb-6">
+            <label class="block text-xs mono tracking-widest mb-1.5">KONFIRMASI PASSWORD</label>
+            <input v-model="registerForm.confirmPassword" type="password" placeholder="Ulangi password"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <button @click="doRegister" :disabled="authLoading"
+            class="w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-gray-900 transition disabled:opacity-50 flex items-center justify-center gap-2">
+            <span v-if="authLoading"
+              class="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin"></span>
+            {{ authLoading ? 'Mendaftar...' : 'Buat Akun' }}
+          </button>
+          <div class="mt-5 text-center text-xs text-gray-500">
+            Sudah punya akun?
+            <button @click="authPage='login'" class="hover:text-black underline ml-1">Masuk</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FORGOT PASSWORD ── -->
+      <div v-if="authPage === 'forgot'" class="w-full max-w-sm fade-enter">
+        <div class="border border-black p-8">
+          <div v-if="authError" class="bg-black text-white text-sm px-4 py-2 mb-5 mono">{{ authError }}</div>
+          <div v-if="authSuccess" class="border border-black text-sm px-4 py-2 mb-5 mono bg-gray-50">{{ authSuccess }}
+          </div>
+          <p class="text-xs text-gray-500 mb-5 leading-relaxed">Masukkan email terdaftar. Password baru akan dibuat
+            untuk akun Anda.</p>
+          <div class="mb-4">
+            <label class="block text-xs mono tracking-widest mb-1.5">EMAIL</label>
+            <input v-model="forgotForm.email" type="email" placeholder="email@example.com"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <div v-if="forgotStep === 2" class="mb-4">
+            <label class="block text-xs mono tracking-widest mb-1.5">PASSWORD BARU</label>
+            <input v-model="forgotForm.newPassword" type="password" placeholder="Password baru"
+              class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+          </div>
+          <button @click="doForgot" :disabled="authLoading"
+            class="w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-gray-900 transition disabled:opacity-50 flex items-center justify-center gap-2">
+            <span v-if="authLoading"
+              class="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin"></span>
+            {{ authLoading ? 'Memproses...' : (forgotStep === 1 ? 'Verifikasi Email' : 'Reset Password') }}
+          </button>
+          <div class="mt-5 text-center text-xs text-gray-500">
+            <button @click="authPage='login'; forgotStep=1;" class="hover:text-black underline">← Kembali ke
+              login</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── DASHBOARD ─── -->
+    <div v-else class="min-h-screen flex flex-col">
+
+      <!-- Top navbar -->
+      <header class="border-b border-black flex items-center justify-between px-6 py-3 sticky top-0 bg-white z-50">
+        <div class="flex items-center gap-4">
+          <span class="mono text-xs tracking-widest font-medium">ADMIN PANEL</span>
+          <span class="text-gray-300">|</span>
+          <span class="text-sm text-gray-500">Products Management</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium">{{ currentUser.name }}</p>
+            <p class="text-xs text-gray-400 mono">{{ currentUser.email }}</p>
+          </div>
+          <button @click="doLogout"
+            class="border border-black px-4 py-1.5 text-xs mono tracking-wider hover:bg-black hover:text-white transition">
+            LOGOUT
+          </button>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+
+        <!-- Stats bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div class="border border-black p-4">
+            <p class="text-xs mono text-gray-400 tracking-widest mb-1">TOTAL PRODUK</p>
+            <p class="text-3xl font-semibold">{{ meta.total || 0 }}</p>
+          </div>
+          <div class="border border-black p-4">
+            <p class="text-xs mono text-gray-400 tracking-widest mb-1">HALAMAN</p>
+            <p class="text-3xl font-semibold">{{ meta.current_page || 1 }}<span class="text-lg text-gray-400">/{{
+                meta.last_page || 1 }}</span></p>
+          </div>
+          <div class="border border-black p-4">
+            <p class="text-xs mono text-gray-400 tracking-widest mb-1">PER HALAMAN</p>
+            <p class="text-3xl font-semibold">{{ meta.per_page || 10 }}</p>
+          </div>
+          <div class="border border-black p-4 flex items-center justify-between">
+            <div>
+              <p class="text-xs mono text-gray-400 tracking-widest mb-1">STATUS API</p>
+              <p class="text-sm font-semibold flex items-center gap-2">
+                <span :class="apiStatus === 'online' ? 'bg-black' : 'bg-gray-300'"
+                  class="w-2 h-2 rounded-full inline-block"></span>
+                {{ apiStatus === 'online' ? 'Online' : 'Offline' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action bar -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-5 items-start sm:items-center justify-between">
+          <div class="flex gap-2 w-full sm:w-auto">
+            <input v-model="searchQuery" @input="filterProducts" type="text" placeholder="Cari nama produk..."
+              class="border border-black px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black w-full sm:w-64" />
+            <button @click="fetchProducts" :disabled="tableLoading"
+              class="border border-black px-4 py-2 text-xs mono hover:bg-black hover:text-white transition disabled:opacity-40">
+              <span v-if="tableLoading"
+                class="w-3 h-3 border border-black border-t-transparent rounded-full spin inline-block"></span>
+              <span v-else>↻</span>
+            </button>
+          </div>
+          <button @click="openModal('create')"
+            class="bg-black text-white px-5 py-2 text-xs mono tracking-widest hover:bg-gray-900 transition whitespace-nowrap">
+            + TAMBAH PRODUK
+          </button>
+        </div>
+
+        <!-- Table -->
+        <div class="border border-black overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="border-b border-black bg-black text-white">
+              <tr>
+                <th class="text-left px-4 py-3 mono text-xs tracking-widest font-normal w-12">#</th>
+                <th class="text-left px-4 py-3 mono text-xs tracking-widest font-normal">NAMA</th>
+                <th class="text-left px-4 py-3 mono text-xs tracking-widest font-normal hidden md:table-cell">DESKRIPSI
+                </th>
+                <th class="text-left px-4 py-3 mono text-xs tracking-widest font-normal">HARGA</th>
+                <th class="text-left px-4 py-3 mono text-xs tracking-widest font-normal">STOK</th>
+                <th class="text-left px-4 py-3 mono text-xs tracking-widest font-normal hidden sm:table-cell">GAMBAR
+                </th>
+                <th class="text-right px-4 py-3 mono text-xs tracking-widest font-normal">AKSI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="tableLoading">
+                <td colspan="7" class="text-center py-16 text-gray-400 mono text-xs">
+                  <span
+                    class="w-5 h-5 border-2 border-black border-t-transparent rounded-full spin inline-block"></span>
+                  <span class="ml-3">Memuat data...</span>
+                </td>
+              </tr>
+              <tr v-else-if="filteredProducts.length === 0">
+                <td colspan="7" class="text-center py-16 text-gray-400 mono text-xs tracking-widest">
+                  — TIDAK ADA DATA —
+                </td>
+              </tr>
+              <tr v-for="(product, idx) in filteredProducts" :key="product.id"
+                class="table-row border-b border-gray-100 last:border-0 transition-colors">
+                <td class="px-4 py-3 mono text-xs text-gray-400">{{ (meta.current_page - 1) * meta.per_page + idx + 1 }}
+                </td>
+                <td class="px-4 py-3 font-medium">{{ product.name }}</td>
+                <td class="px-4 py-3 text-gray-500 max-w-xs hidden md:table-cell">
+                  <span class="line-clamp-1">{{ product.description || '—' }}</span>
+                </td>
+                <td class="px-4 py-3 mono text-sm">{{ formatCurrency(product.price) }}</td>
+                <td class="px-4 py-3">
+                  <span :class="product.stock < 10 ? 'bg-black text-white' : 'border border-black'"
+                    class="px-2 py-0.5 text-xs mono">
+                    {{ product.stock }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 hidden sm:table-cell">
+                  <img v-if="product.image" :src="product.image" alt="img"
+                    class="w-10 h-10 object-cover border border-gray-200" />
+                  <span v-else class="text-gray-300 mono text-xs">—</span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex gap-2 justify-end">
+                    <button @click="openModal('view', product)"
+                      class="border border-black px-3 py-1 text-xs mono hover:bg-black hover:text-white transition">
+                      LIHAT
+                    </button>
+                    <button @click="openModal('edit', product)"
+                      class="border border-black px-3 py-1 text-xs mono hover:bg-black hover:text-white transition">
+                      EDIT
+                    </button>
+                    <button @click="confirmDelete(product)"
+                      class="border border-black px-3 py-1 text-xs mono hover:bg-black hover:text-white transition">
+                      ✕
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="meta.last_page > 1" class="flex items-center justify-between mt-4 text-xs mono">
+          <span class="text-gray-400">
+            Menampilkan {{ filteredProducts.length }} dari {{ meta.total }} produk
+          </span>
+          <div class="flex gap-1">
+            <button v-for="page in meta.last_page" :key="page" @click="goToPage(page)"
+              :class="page === meta.current_page ? 'bg-black text-white' : 'border border-black hover:bg-black hover:text-white'"
+              class="w-8 h-8 text-xs transition">
+              {{ page }}
+            </button>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ─── MODAL ─── -->
+    <transition name="fade">
+      <div v-if="showModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+        @click.self="closeModal">
+        <div class="bg-white border border-black w-full max-w-lg max-h-[90vh] overflow-y-auto slide-in">
+
+          <!-- Modal header -->
+          <div class="flex items-center justify-between border-b border-black px-6 py-4 sticky top-0 bg-white">
+            <h2 class="mono text-xs tracking-widest font-medium">
+              {{ modalMode === 'create' ? 'TAMBAH PRODUK' : modalMode === 'edit' ? 'EDIT PRODUK' : 'DETAIL PRODUK' }}
+            </h2>
+            <button @click="closeModal" class="text-gray-400 hover:text-black text-xl leading-none">×</button>
+          </div>
+
+          <!-- Modal body -->
+          <div class="px-6 py-5">
+
+            <!-- VIEW MODE -->
+            <div v-if="modalMode === 'view'" class="space-y-4">
+              <div v-if="selectedProduct.image" class="mb-4">
+                <img :src="selectedProduct.image" alt="Product"
+                  class="w-full h-48 object-cover border border-gray-200" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-xs mono text-gray-400 tracking-widest mb-1">ID</p>
+                  <p class="font-medium mono">{{ selectedProduct.id }}</p>
+                </div>
+                <div>
+                  <p class="text-xs mono text-gray-400 tracking-widest mb-1">STOK</p>
+                  <p class="font-medium">{{ selectedProduct.stock }}</p>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs mono text-gray-400 tracking-widest mb-1">NAMA PRODUK</p>
+                <p class="font-medium">{{ selectedProduct.name }}</p>
+              </div>
+              <div>
+                <p class="text-xs mono text-gray-400 tracking-widest mb-1">DESKRIPSI</p>
+                <p class="text-sm text-gray-600 leading-relaxed">{{ selectedProduct.description || 'Tidak ada
+                  deskripsi.' }}</p>
+              </div>
+              <div>
+                <p class="text-xs mono text-gray-400 tracking-widest mb-1">HARGA</p>
+                <p class="text-xl font-semibold">{{ formatCurrency(selectedProduct.price) }}</p>
+              </div>
+              <div class="grid grid-cols-2 gap-4 text-xs mono text-gray-400 pt-2 border-t border-gray-100">
+                <div>
+                  <p class="tracking-widest mb-0.5">DIBUAT</p>
+                  <p class="text-black">{{ formatDate(selectedProduct.created_at) }}</p>
+                </div>
+                <div>
+                  <p class="tracking-widest mb-0.5">DIPERBARUI</p>
+                  <p class="text-black">{{ formatDate(selectedProduct.updated_at) }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- CREATE / EDIT FORM -->
+            <div v-else class="space-y-4">
+              <div v-if="formError" class="bg-black text-white text-xs px-4 py-2 mono">{{ formError }}</div>
+              <div>
+                <label class="block text-xs mono tracking-widest mb-1.5 text-gray-500">NAMA PRODUK *</label>
+                <input v-model="productForm.name" type="text" placeholder="Nama produk"
+                  class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+              </div>
+              <div>
+                <label class="block text-xs mono tracking-widest mb-1.5 text-gray-500">DESKRIPSI</label>
+                <textarea v-model="productForm.description" rows="3" placeholder="Deskripsi produk..."
+                  class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black resize-none"></textarea>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs mono tracking-widest mb-1.5 text-gray-500">HARGA *</label>
+                  <input v-model="productForm.price" type="number" step="0.01" min="0" placeholder="0.00"
+                    class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+                </div>
+                <div>
+                  <label class="block text-xs mono tracking-widest mb-1.5 text-gray-500">STOK *</label>
+                  <input v-model="productForm.stock" type="number" min="0" placeholder="0"
+                    class="w-full border border-black px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs mono tracking-widest mb-1.5 text-gray-500">
+                  GAMBAR {{ modalMode === 'edit' ? '(kosongkan jika tidak diubah)' : '*' }}
+                </label>
+                <input type="file" accept="image/*" @change="handleFileChange"
+                  class="w-full border border-black px-3 py-2 text-sm outline-none text-gray-500" />
+                <div v-if="imagePreview" class="mt-2">
+                  <img :src="imagePreview" class="w-full h-32 object-cover border border-gray-200" />
+                </div>
+                <div v-else-if="modalMode === 'edit' && selectedProduct.image" class="mt-2">
+                  <p class="text-xs text-gray-400 mono mb-1">Gambar saat ini:</p>
+                  <img :src="selectedProduct.image" class="w-20 h-20 object-cover border border-gray-200" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal footer -->
+          <div class="px-6 py-4 border-t border-black flex justify-end gap-3 sticky bottom-0 bg-white">
+            <button @click="closeModal" class="border border-black px-5 py-2 text-xs mono hover:bg-gray-50 transition">
+              TUTUP
+            </button>
+            <button v-if="modalMode !== 'view'" @click="submitForm" :disabled="formLoading"
+              class="bg-black text-white px-5 py-2 text-xs mono hover:bg-gray-900 transition disabled:opacity-50 flex items-center gap-2">
+              <span v-if="formLoading"
+                class="w-3 h-3 border border-white border-t-transparent rounded-full spin"></span>
+              {{ formLoading ? 'MENYIMPAN...' : (modalMode === 'create' ? 'SIMPAN' : 'PERBARUI') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ─── DELETE CONFIRM ─── -->
+    <transition name="fade">
+      <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-black w-full max-w-sm slide-in">
+          <div class="px-6 py-5">
+            <h2 class="mono text-xs tracking-widest mb-3">HAPUS PRODUK</h2>
+            <p class="text-sm text-gray-600 mb-1">Anda yakin ingin menghapus produk:</p>
+            <p class="font-semibold text-base mb-4">"{{ productToDelete?.name }}"</p>
+            <p class="text-xs text-gray-400 mono">Tindakan ini tidak dapat dibatalkan.</p>
+          </div>
+          <div class="px-6 py-4 border-t border-black flex justify-end gap-3">
+            <button @click="showDeleteConfirm = false"
+              class="border border-black px-5 py-2 text-xs mono hover:bg-gray-50">BATAL</button>
+            <button @click="deleteProduct" :disabled="formLoading"
+              class="bg-black text-white px-5 py-2 text-xs mono hover:bg-gray-900 disabled:opacity-50 flex items-center gap-2">
+              <span v-if="formLoading"
+                class="w-3 h-3 border border-white border-t-transparent rounded-full spin"></span>
+              {{ formLoading ? 'MENGHAPUS...' : 'HAPUS' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ─── TOAST ─── -->
+    <transition name="fade">
+      <div v-if="toast.show" :class="toast.type === 'error' ? 'bg-black' : 'bg-black'"
+        class="fixed bottom-6 right-6 text-white text-sm mono px-5 py-3 z-50 flex items-center gap-3 shadow-xl max-w-sm slide-in">
+        <span :class="toast.type === 'error' ? 'text-red-300' : 'text-green-300'">
+          {{ toast.type === 'error' ? '✕' : '✓' }}
+        </span>
+        {{ toast.message }}
+      </div>
+    </transition>
+
+  </div>
+
+  <script>
+    const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+
+    const API_BASE = 'http://localhost:8000/api';
+    const USERS_KEY = 'admin_panel_users';
+    const SESSION_KEY = 'admin_panel_session';
+
+    // ── local user store ──
+    const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    const saveUsers = (u) => localStorage.setItem(USERS_KEY, JSON.stringify(u));
+    const getSession = () => JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    const saveSession = (u) => localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+    const clearSession = () => localStorage.removeItem(SESSION_KEY);
+
+    // seed default admin
+    (function seedAdmin() {
+      const users = getUsers();
+      if (!users.find(u => u.email === 'admin@example.com')) {
+        users.push({ name: 'Admin', email: 'admin@example.com', password: 'password' });
+        saveUsers(users);
+      }
+    })();
+
+    createApp({
+      setup() {
+        // ── Auth state ──
+        const isLoggedIn = ref(!!getSession());
+        const currentUser = ref(getSession() || {});
+        const authPage = ref('login');
+        const authLoading = ref(false);
+        const authError = ref('');
+        const authSuccess = ref('');
+        const forgotStep = ref(1);
+
+        const loginForm = reactive({ email: '', password: '' });
+        const registerForm = reactive({ name: '', email: '', password: '', confirmPassword: '' });
+        const forgotForm = reactive({ email: '', newPassword: '' });
+
+        // ── Products state ──
+        const products = ref([]);
+        const filteredProducts = ref([]);
+        const meta = ref({ current_page: 1, last_page: 1, per_page: 10, total: 0 });
+        const tableLoading = ref(false);
+        const apiStatus = ref('offline');
+        const searchQuery = ref('');
+
+        // ── Modal state ──
+        const showModal = ref(false);
+        const modalMode = ref('create');
+        const selectedProduct = ref({});
+        const productForm = reactive({ name: '', description: '', price: '', stock: '' });
+        const imageFile = ref(null);
+        const imagePreview = ref('');
+        const formLoading = ref(false);
+        const formError = ref('');
+
+        // ── Delete state ──
+        const showDeleteConfirm = ref(false);
+        const productToDelete = ref(null);
+
+        // ── Toast ──
+        const toast = reactive({ show: false, message: '', type: 'success' });
+
+        function showToast(message, type = 'success') {
+          toast.message = message;
+          toast.type = type;
+          toast.show = true;
+          setTimeout(() => toast.show = false, 3000);
+        }
+
+        // ─── AUTH ───
+        function doLogin() {
+          authError.value = '';
+          if (!loginForm.email || !loginForm.password) {
+            authError.value = 'Email dan password wajib diisi.'; return;
+          }
+          authLoading.value = true;
+          setTimeout(() => {
+            const users = getUsers();
+            const user = users.find(u => u.email === loginForm.email && u.password === loginForm.password);
+            if (user) {
+              const sess = { name: user.name, email: user.email };
+              saveSession(sess);
+              currentUser.value = sess;
+              isLoggedIn.value = true;
+              fetchProducts();
+            } else {
+              authError.value = 'Email atau password salah.';
+            }
+            authLoading.value = false;
+          }, 700);
+        }
+
+        function doRegister() {
+          authError.value = ''; authSuccess.value = '';
+          const { name, email, password, confirmPassword } = registerForm;
+          if (!name || !email || !password) { authError.value = 'Semua field wajib diisi.'; return; }
+          if (password.length < 6) { authError.value = 'Password minimal 6 karakter.'; return; }
+          if (password !== confirmPassword) { authError.value = 'Password tidak cocok.'; return; }
+          authLoading.value = true;
+          setTimeout(() => {
+            const users = getUsers();
+            if (users.find(u => u.email === email)) {
+              authError.value = 'Email sudah terdaftar.';
+            } else {
+              users.push({ name, email, password });
+              saveUsers(users);
+              authSuccess.value = 'Akun berhasil dibuat! Silakan login.';
+              registerForm.name = ''; registerForm.email = '';
+              registerForm.password = ''; registerForm.confirmPassword = '';
+              setTimeout(() => { authPage.value = 'login'; authSuccess.value = ''; }, 1500);
+            }
+            authLoading.value = false;
+          }, 700);
+        }
+
+        function doForgot() {
+          authError.value = ''; authSuccess.value = '';
+          authLoading.value = true;
+          setTimeout(() => {
+            const users = getUsers();
+            const user = users.find(u => u.email === forgotForm.email);
+            if (!user) { authError.value = 'Email tidak ditemukan.'; authLoading.value = false; return; }
+            if (forgotStep.value === 1) {
+              forgotStep.value = 2;
+              authSuccess.value = 'Email ditemukan. Masukkan password baru di bawah.';
+            } else {
+              if (!forgotForm.newPassword || forgotForm.newPassword.length < 6) {
+                authError.value = 'Password baru minimal 6 karakter.'; authLoading.value = false; return;
+              }
+              user.password = forgotForm.newPassword;
+              saveUsers(users);
+              authSuccess.value = 'Password berhasil direset! Silakan login.';
+              forgotForm.email = ''; forgotForm.newPassword = '';
+              forgotStep.value = 1;
+              setTimeout(() => { authPage.value = 'login'; authSuccess.value = ''; }, 1500);
+            }
+            authLoading.value = false;
+          }, 700);
+        }
+
+        function doLogout() {
+          clearSession();
+          isLoggedIn.value = false;
+          currentUser.value = {};
+          products.value = [];
+          filteredProducts.value = [];
+        }
+
+        // ─── API ───
+        async function fetchProducts(page = 1) {
+          tableLoading.value = true;
+          try {
+            const res = await fetch(`${API_BASE}/products?page=${page}`);
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            products.value = json.data || [];
+            meta.value = json.meta || meta.value;
+            filteredProducts.value = [...products.value];
+            apiStatus.value = 'online';
+            filterProducts();
+          } catch {
+            apiStatus.value = 'offline';
+            showToast('Gagal memuat data. Periksa koneksi API.', 'error');
+          }
+          tableLoading.value = false;
+        }
+
+        function filterProducts() {
+          const q = searchQuery.value.toLowerCase();
+          filteredProducts.value = q
+            ? products.value.filter(p => p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+            : [...products.value];
+        }
+
+        function goToPage(page) {
+          if (page !== meta.value.current_page) fetchProducts(page);
+        }
+
+        // ─── MODAL ───
+        function openModal(mode, product = null) {
+          modalMode.value = mode;
+          formError.value = '';
+          imageFile.value = null;
+          imagePreview.value = '';
+          if (product) {
+            selectedProduct.value = { ...product };
+            if (mode === 'edit') {
+              productForm.name = product.name;
+              productForm.description = product.description || '';
+              productForm.price = product.price;
+              productForm.stock = product.stock;
+            }
+          } else {
+            productForm.name = ''; productForm.description = '';
+            productForm.price = ''; productForm.stock = '';
+            selectedProduct.value = {};
+          }
+          showModal.value = true;
+        }
+
+        function closeModal() {
+          showModal.value = false;
+          imagePreview.value = '';
+          imageFile.value = null;
+        }
+
+        function handleFileChange(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          imageFile.value = file;
+          const reader = new FileReader();
+          reader.onload = (ev) => imagePreview.value = ev.target.result;
+          reader.readAsDataURL(file);
+        }
+
+        async function submitForm() {
+          formError.value = '';
+          if (!productForm.name) { formError.value = 'Nama produk wajib diisi.'; return; }
+          if (!productForm.price) { formError.value = 'Harga wajib diisi.'; return; }
+          if (productForm.stock === '') { formError.value = 'Stok wajib diisi.'; return; }
+          if (modalMode.value === 'create' && !imageFile.value) { formError.value = 'Gambar wajib diunggah.'; return; }
+
+          formLoading.value = true;
+          const fd = new FormData();
+          fd.append('name', productForm.name);
+          fd.append('description', productForm.description);
+          fd.append('price', productForm.price);
+          fd.append('stock', productForm.stock);
+          if (imageFile.value) fd.append('image', imageFile.value);
+
+          try {
+            let res;
+            if (modalMode.value === 'create') {
+              res = await fetch(`${API_BASE}/products`, { method: 'POST', body: fd });
+            } else {
+              fd.append('_method', 'PUT');
+              res = await fetch(`${API_BASE}/products/${selectedProduct.value.id}`, { method: 'POST', body: fd });
+            }
+            const json = await res.json();
+            if (!res.ok) {
+              formError.value = json.message || 'Terjadi kesalahan.';
+            } else {
+              closeModal();
+              showToast(modalMode.value === 'create' ? 'Produk berhasil ditambahkan!' : 'Produk berhasil diperbarui!');
+              fetchProducts(meta.value.current_page);
+            }
+          } catch {
+            formError.value = 'Tidak dapat terhubung ke server.';
+          }
+          formLoading.value = false;
+        }
+
+        function confirmDelete(product) {
+          productToDelete.value = product;
+          showDeleteConfirm.value = true;
+        }
+
+        async function deleteProduct() {
+          formLoading.value = true;
+          try {
+            const res = await fetch(`${API_BASE}/products/${productToDelete.value.id}`, { method: 'DELETE' });
+            if (res.ok) {
+              showDeleteConfirm.value = false;
+              showToast('Produk berhasil dihapus!');
+              fetchProducts(meta.value.current_page);
+            } else {
+              showToast('Gagal menghapus produk.', 'error');
+            }
+          } catch {
+            showToast('Tidak dapat terhubung ke server.', 'error');
+          }
+          formLoading.value = false;
+        }
+
+        // ─── HELPERS ───
+        function formatCurrency(val) {
+          return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+        }
+
+        function formatDate(str) {
+          if (!str) return '—';
+          return new Date(str).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        onMounted(() => {
+          if (isLoggedIn.value) fetchProducts();
+        });
+
+        return {
+          isLoggedIn, currentUser, authPage, authLoading, authError, authSuccess,
+          forgotStep, loginForm, registerForm, forgotForm,
+          doLogin, doRegister, doForgot, doLogout,
+          products, filteredProducts, meta, tableLoading, apiStatus, searchQuery,
+          filterProducts, fetchProducts, goToPage,
+          showModal, modalMode, selectedProduct, productForm,
+          imageFile, imagePreview, formLoading, formError,
+          openModal, closeModal, handleFileChange, submitForm,
+          showDeleteConfirm, productToDelete, confirmDelete, deleteProduct,
+          toast, formatCurrency, formatDate,
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+
+</html>
